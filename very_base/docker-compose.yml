@@ -1,0 +1,22 @@
+version: "3"
+services:
+  mqtt:
+    container_name: mqtter_go
+    image: eclipse-mosquitto:latest
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/log:/mosquitto/log
+      - ./mosquitto/data:/mosquitto/data
+#    ports:
+#      - "1883:1883"
+
+
+  notebook:
+    build: .
+    command: jupyter lab  --NotebookApp.token=abcd
+    ports:
+      - "9090:8888"
+    volumes:
+      - ..:/home/jovyan/work
+    links:
+      - "mqtt"

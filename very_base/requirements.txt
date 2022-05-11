@@ -1,0 +1,8 @@
+paho-mqtt
+runipy
+numpy
+opencv-python
+matplotlib
+
+jupyterlab
+jupyterlab-git

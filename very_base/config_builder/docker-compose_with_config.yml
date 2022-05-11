@@ -1,0 +1,10 @@
+services: 
+  configer: 
+    image: eclipse-mosquitto:latest 
+    command: /bin/sh -c "
+      mosquitto_passwd -b -c passwd tom xiao
+      &&mv /passwd /mos
+      &&mv /mosquitto/config/mosquitto.conf /mos
+      "
+    volumes:
+      - ../mosquitto/config:/mos/

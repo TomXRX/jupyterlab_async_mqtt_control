@@ -1,0 +1,16 @@
+need to automate config_builder
+
+need to change config: add "listener 1883" to conf
+（relpace "#listener" with "listener 1883"
+
+
+just add:
+
+persistence true
+persistence_location /mosquitto/data
+
+log_dest file /mosquitto/log/mosquitto.log
+
+listener 1883
+allow_anonymous false
+password_file /mosquitto/config/passwd
