@@ -4,5 +4,6 @@ numpy
 opencv-python
 matplotlib
 
+ipywidgets
 jupyterlab
 jupyterlab-git
