@@ -7,7 +7,7 @@ class ControlA(ControlAdvance):
     
     @loop()
     async def pipeline_caller(self):
-        if not self.new_message:return
+        if self.new_message<=0:return
         self.new_message-=1
         for key,item in self.pipeline.state_dict.items():
             if len(item):
@@ -38,6 +38,7 @@ class ControlA(ControlAdvance):
             self.auto_define=False
             self.json=j
     
+    debug=False
     sended_warned=0
     channels=defaultdict(Channel)
     new_message=0
@@ -46,9 +47,9 @@ class ControlA(ControlAdvance):
         topic=msg.topic
         payload=msg.payload
 
-        # print(f"Have a message that is ({topic},{payload})")
+        if self.debug:print(f"Have a message that is ({topic},{payload})")
         if self.do_not_hear_itself_publish(topic,payload):return
-        # print("is recieved")
+        if self.debug:print("is recieved")
         
         channel=self.channels[topic]
         

@@ -7,10 +7,13 @@ class Control:
     def client_start(self):
         import time
         import paho.mqtt.client as mqtt
-        client = mqtt.Client(str(time.time()))
+        name=str(time.time())
+        client = mqtt.Client(name)
+        self.id_name=name
         client.username_pw_set(*self.client_pw)
         client.on_connect = self.on_connect
         client.on_message = self.on_message
+        client.will_set('lastwill', name)
         client.connect(self.HOST, self.PORT, 60)
         return client
 

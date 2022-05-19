@@ -1,5 +1,5 @@
 from util_with_json import *
-
+import asyncio
 C=ControlA()
 
 def name_iterator(name_list,preferred_name=None):
@@ -17,67 +17,75 @@ def name_iterator(name_list,preferred_name=None):
 def names(C,S,topic,payload):
     if not topic=="requests_all":return
     if not payload=="names":return
-    C.publish("names",list(S.names))
+    C.publish("names",S.names)
     return True
     
 C.requests_func_list.append(names)
 
 
-import asyncio
-print("""
-    be aware that names are not updated.
-    names can get very long if not having a full rest, with every client restart.
-    
-    """)
 async def task_1(C,S):
     
     
     #1: request others name and record name (ask everyone?)
     C.subscribe("names")
-    # C.channels["names"].set_json()
+    C.subscribe("lastwill")
+
     C.publish("requests_all","names")
     # get_others requested name
-    await asyncio.sleep(0.1)
-    li=C.pipeline_checker("names")
-    eli=[]
+    li=None
+    while li is None:
+        await asyncio.sleep(0.1)
+        li=C.pipeline_checker("names")
+    
+    dic={}
     haved_len=0
     for i in range(len(li)):
-        lii=li.pop()
-        eli.extend(lii)
-        if haved_len!=len(lii):
+        di=li.popleft()
+        dic.update(di)
+        if haved_len!=len(di):
             if haved_len==0:
-                haved_len=len(lii)
+                haved_len=len(di)
             else:
-                print("not identical name list, should be error")
+                print("not identical name dict, should be error")
                 print(lii,haved_len)
                 print("="*20)
-    S.names=set(eli)
+    S.names=dic
     return True
     
+def remove_name(C,S,topic,payload):
+    if not topic=="lastwill":return
+    print("grieving")
+    # somehow not json
+    name=str(payload)
+    try:S.names.pop(name)
+    except KeyError:
+        print("not_supposed")
+    return True
 
 def record_names(C,S,topic,payload):
     if not topic=="name":return
     print("let's GO")
     name=payload
-    if name in S.names:
+    
+    if tuple(name.values())[0] in S.names.values():
         C.publish(S.name,"name already taken")
         print(name)
         if name == S.name:
             C.publish(S.name,"That Is My Name")
             print("my name run in to confict")
-    else:S.names.add(name)
+    else:S.names.update(name)
     return True
     
-C.requests_func_list.append(record_names)
+C.requests_func_list.extend([record_names,remove_name])
 
 
 async def task_2(C,S):
     import time
     #2: generate its own name, publish it to let others confirm there is no conflicts
     C.subscribe("requests_all")
-    S.name=name_iterator(S.names)
+    S.name=name_iterator(S.names.values())
     S.name_time=time.time()
-    S.names.add(S.name)
+    S.names.update({C.id_name:S.name})
     
 
     await asyncio.sleep(0.1)
@@ -102,7 +110,6 @@ def respond_names(C,S,topic,payload):
     
 C.requests_func_list.append(respond_names)
 
-import asyncio
 async def task_3(C,S):
     #3:  if confilct, random a number to wait on their "own" chanel, and claim it as its own. the other start from 1.
     import random
@@ -119,7 +126,7 @@ async def task_3(C,S):
     if li:
         return False
     
-    C.publish("name",S.name)
+    C.publish("name",{C.id_name:S.name})
     C.subscribe("name")
     
     await asyncio.sleep(0.1)
@@ -178,22 +185,36 @@ async def await_tasks(C):
     return True
     
     
+from collections import deque;ret=deque((),1)
 def exec_ret(C,S,topic,payload):
+    global ret
     if topic=="exec_ret":return True
     if not topic=="exec":return
+
+    # designed not to use too often
     
-    from collections import deque
-    ret=deque((),1)
-    
+    if "ret" in payload:
+        print("using 'ret' causes problem, skipping")
+        return True
+        
+    to_ret=False
+    if not "=" in payload:
+        payload=f"ret.append({payload})"
+        to_ret=True
+        
     try:
         exec(payload)
-        try:g=ret.popleft()
-        except:g="errored in pop"
+        if to_ret:
+            try:g=ret.popleft()
+            except IndexError:g=None
     except Exception as e:
         g="error"+str(e)
-
-    C.publish(S.name+"/"+"exec_ret",g)
+        C.publish(S.name+"/"+"exec_ret",g)
+        return True
+        
+    if to_ret:C.publish(S.name+"/"+"exec_ret",g)
     return True
+
 
 C.pipeline.func_list.append(exec_ret)
     
