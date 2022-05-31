@@ -79,11 +79,11 @@ def record_names(C,S,topic,payload):
 C.requests_func_list.extend([record_names,remove_name])
 
 
-async def task_2(C,S):
+async def task_2(C,S,preferred_name):
     import time
     #2: generate its own name, publish it to let others confirm there is no conflicts
     C.subscribe("requests_all")
-    S.name=name_iterator(S.names.values())
+    S.name=name_iterator(S.names.values(),preferred_name)
     S.name_time=time.time()
     S.names.update({C.id_name:S.name})
     
@@ -171,14 +171,14 @@ class StateMachine:
     
     
     
-async def await_tasks(C):
+async def await_tasks(C,preferred_name=None):
     S=C.pipeline
     first=True
     while 1:
         if not first:print("TODO~!!!,need to clear pipeline if need to restart")
         first=False
         if not await task_1(C,S):continue
-        if not await task_2(C,S):continue    
+        if not await task_2(C,S,preferred_name):continue    
         if not await task_3(C,S):continue    
         if not await task_4(C,S):continue
         break
@@ -188,8 +188,8 @@ async def await_tasks(C):
 from collections import deque;ret=deque((),1)
 def exec_ret(C,S,topic,payload):
     global ret
-    if topic=="exec_ret":return True
     if not topic=="exec":return
+    print("doing exec")
 
     # designed not to use too often
     
@@ -205,14 +205,17 @@ def exec_ret(C,S,topic,payload):
     try:
         exec(payload)
         if to_ret:
-            try:g=ret.popleft()
+            try:
+                g=ret.popleft()
+                try:
+                    C.publish("ret_"+S.name+"/"+"exec",g)
+                except:
+                    C.publish("ret_"+S.name+"/"+"exec",str(g))
             except IndexError:g=None
     except Exception as e:
-        g="error"+str(e)
-        C.publish(S.name+"/"+"exec_ret",g)
+        C.publish("ret_"+S.name+"/"+"exec","error"+str(e))
         return True
-        
-    if to_ret:C.publish(S.name+"/"+"exec_ret",g)
+    
     return True
 
 

@@ -10,12 +10,15 @@ class ControlA(ControlAdvance):
         if self.new_message<=0:return
         self.new_message-=1
         for key,item in self.pipeline.state_dict.items():
-            if len(item):
-                i=item.popleft()
-                ret=self.requests_all(key,i)
-                if ret is None:
-                    # print("request not handled")
-                    item.append(i)
+            try:i=item.popleft()
+            except:continue
+
+            ret=self.requests_all(key,i)
+            if ret is None:
+                if key=="names":continue
+                print(f"request not handled {str(i)}")
+                item.append(i)
+                await asyncio.sleep(0.1)
 
     requests_func_list=list()
     def requests_all(self,topic,payload):
@@ -65,7 +68,12 @@ class ControlA(ControlAdvance):
             # return self.pipeline(topic,payload)    
         if channel.json:
             import json
-            payload=json.loads(payload.decode())
+            try:payload=json.loads(payload.decode())
+            except:
+                try:payload=payload.decode()
+                except:
+                    print("bad payload")
+                    return
             return self.pipeline(topic,payload)
         return self.pipeline(topic,payload)
         
@@ -83,6 +91,10 @@ class ControlA(ControlAdvance):
         #do not go through pipeline (state_saver). handle all by itself.
         
         self.pop_next_recv.remove(tu)
+        
+        if len(self.pop_next_recv)>10:
+            print(f"self.pop_next_recv too long, {self.pop_next_recv}")
+            self.pop_next_recv=[]
         return True
         
         
@@ -110,7 +122,7 @@ class ControlA(ControlAdvance):
         
         if topic in self.subscribed:
             self.pop_next_recv.append((topic,payload))
-        
+            
         self.client.publish(topic,payload)
         
         channel.sended=True

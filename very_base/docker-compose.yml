@@ -12,6 +12,7 @@ services:
 
 
   notebook:
+    image: toms/widgets_notebook
     build: .
     command: jupyter lab  --NotebookApp.token=abcd
     ports:
